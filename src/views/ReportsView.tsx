@@ -1,4 +1,5 @@
 import { FileText, Download, Calendar, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { MetricCard } from '../components/MetricCard';
 import { morningReport } from '../data/mockData';
 import type { ClientGroup } from '../types';
@@ -144,6 +145,18 @@ export function ReportsView({ groups }: ReportsViewProps) {
 }
 
 export function SettingsView() {
+  const [status, setStatus] = useState<{
+    amazon: { configured: boolean; marketplace: string };
+    supabase?: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/integrations/status')
+      .then((r) => r.json())
+      .then(setStatus)
+      .catch(() => setStatus({ amazon: { configured: false, marketplace: 'UK' } }));
+  }, []);
+
   return (
     <div className="view settings-view">
       <header className="view-header">
@@ -154,6 +167,77 @@ export function SettingsView() {
       </header>
 
       <div className="settings-sections">
+        <section className="panel settings-panel">
+          <h2>Integrations</h2>
+          <p className="settings-desc">Platform connection status</p>
+          <div className="platform-status-list">
+            <div className="platform-status-item">
+              <div className="ps-info">
+                <span className="ps-name">Amazon UK SP-API</span>
+                <span className="ps-note">Link-based OAuth via Seller Central</span>
+              </div>
+              <span
+                className={`ps-status ${status?.amazon.configured ? 'status-ready' : 'status-pending'}`}
+              >
+                {status?.amazon.configured ? 'Ready' : 'Needs setup'}
+              </span>
+            </div>
+            {[
+              { name: 'TikTok Shop', note: 'Phase 2 — OAuth' },
+              { name: 'eBay UK', note: 'Phase 2 — OAuth' },
+              { name: 'Etsy', note: 'Phase 2 — OAuth' },
+            ].map((p) => (
+              <div key={p.name} className="platform-status-item">
+                <div className="ps-info">
+                  <span className="ps-name">{p.name}</span>
+                  <span className="ps-note">{p.note}</span>
+                </div>
+                <span className="ps-status status-pending">Coming soon</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel settings-panel">
+          <h2>Amazon UK Setup (one-time)</h2>
+          <p className="settings-desc">
+            Add these to your Vercel project → Settings → Environment Variables
+          </p>
+          <div className="setup-vars">
+            <code>AMAZON_APPLICATION_ID</code>
+            <code>AMAZON_LWA_CLIENT_ID</code>
+            <code>AMAZON_LWA_CLIENT_SECRET</code>
+            <code>AMAZON_REDIRECT_URI</code>
+            <code>AMAZON_DRAFT_APP=true</code>
+            <code>APP_URL=https://your-vercel-url.vercel.app</code>
+          </div>
+          <p className="settings-desc setup-note">
+            Register once at{' '}
+            <a href="https://sellercentral.amazon.co.uk" target="_blank" rel="noreferrer">
+              Seller Central UK → Develop Apps
+            </a>
+            . Each brand then connects via the &quot;Connect Amazon UK&quot; button — no per-client
+            API setup.
+          </p>
+        </section>
+
+        <section className="panel settings-panel">
+          <h2>Database (Supabase)</h2>
+          <p className="settings-desc">
+            {status?.supabase
+              ? 'Supabase connected — tokens stored securely'
+              : 'Optional: add Supabase for persistent brands and token storage'}
+          </p>
+          <div className="setup-vars">
+            <code>VITE_SUPABASE_URL</code>
+            <code>VITE_SUPABASE_ANON_KEY</code>
+            <code>SUPABASE_SERVICE_ROLE_KEY</code>
+          </div>
+          <p className="settings-desc setup-note">
+            Run <code>supabase/schema.sql</code> in your Supabase SQL editor.
+          </p>
+        </section>
+
         <section className="panel settings-panel">
           <h2>Morning Report Schedule</h2>
           <p className="settings-desc">Automated reports are generated and emailed daily</p>
@@ -194,26 +278,6 @@ export function SettingsView() {
           <div className="settings-row toggle-row">
             <label>Auto-sync on login</label>
             <input type="checkbox" defaultChecked />
-          </div>
-        </section>
-
-        <section className="panel settings-panel">
-          <h2>Connected Platforms</h2>
-          <p className="settings-desc">API integration status (mockup — not live)</p>
-          <div className="platform-status-list">
-            {[
-              { name: 'TikTok Shop API', status: 'ready', note: 'OAuth 2.0' },
-              { name: 'Amazon SP-API', status: 'ready', note: 'Seller Central' },
-              { name: 'eBay Trading API', status: 'ready', note: 'OAuth' },
-            ].map((p) => (
-              <div key={p.name} className="platform-status-item">
-                <div className="ps-info">
-                  <span className="ps-name">{p.name}</span>
-                  <span className="ps-note">{p.note}</span>
-                </div>
-                <span className="ps-status status-ready">Ready to connect</span>
-              </div>
-            ))}
           </div>
         </section>
       </div>

@@ -1,55 +1,53 @@
 # Foundry Labs — Commerce Hub
 
-A unified dashboard mockup for managing TikTok Shop, Amazon, and eBay accounts across multiple client groups. Built with a clean, Apple-inspired aesthetic.
+Unified dashboard for managing TikTok Shop, Amazon UK, eBay, and Etsy accounts across brand groups.
 
-## Features
+## Phase 1 — Amazon UK OAuth (Live)
 
-- **Client Groups** — Organise accounts by business client (Enterprise, Mid-Market, Small Business)
-- **Multi-Platform** — TikTok Shop, Amazon Seller Central, and eBay in one view
-- **24-Hour Analytics** — Live metrics with hourly charts for revenue, orders, and views
-- **Morning Reports** — Automated daily snapshots with highlights, alerts, and rankings
-- **Account Connection Flow** — Step-by-step modal to add platform credentials
-- **Live Data Simulation** — Metrics refresh every 30 seconds to simulate real-time sync
+- **Link-based connect** — brands authorise via Seller Central (no per-client API setup)
+- **Vercel API routes** — `/api/amazon/authorize` and `/api/amazon/callback`
+- **Optional Supabase** — auth, brands, encrypted token storage
+- **Demo mode** — works without config using mock data
 
 ## Quick Start
 
 ```bash
-cd foundry-dashboard
 npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+Copy `.env.example` to Vercel environment variables. See **Settings → Integrations** in the app.
+
+## Amazon UK Setup (one-time)
+
+1. [Seller Central UK](https://sellercentral.amazon.co.uk) → **Develop Apps**
+2. Create SP-API app → note Application ID, LWA Client ID & Secret
+3. Set redirect URI: `https://your-app.vercel.app/api/amazon/callback`
+4. Add env vars to Vercel (see `.env.example`)
+5. In app: open a brand → **Connect Account** → **Amazon UK** → **Connect Amazon UK**
+
+Each brand connects via link — clients can authorise their own seller accounts.
 
 ## Tech Stack
 
-- React 19 + TypeScript
-- Vite
-- Recharts (analytics charts)
-- Lucide React (icons)
-
-## Mockup Notes
-
-This is a **frontend mockup** with simulated data. Live platform integrations would require:
-
-| Platform | API | Auth |
-|----------|-----|------|
-| TikTok Shop | TikTok Shop Open API | OAuth 2.0 |
-| Amazon | Selling Partner API (SP-API) | LWA + IAM |
-| eBay | eBay Trading/Finding API | OAuth 2.0 |
+- React 19 + TypeScript + Vite
+- Vercel Serverless Functions (Amazon OAuth)
+- Supabase (optional — auth + Postgres)
+- Recharts + Lucide React
 
 ## Project Structure
 
 ```
+api/                # Vercel serverless (Amazon OAuth)
+supabase/           # Database schema
 src/
-├── components/     # UI components (Sidebar, Cards, Charts, Modals)
-├── views/          # Page views (Overview, Groups, Reports, Settings)
-├── data/           # Mock data and generators
-├── hooks/          # Live data simulation hook
-├── utils/          # Formatting helpers
-└── types.ts        # TypeScript interfaces
+├── components/     # UI components
+├── views/          # Pages (Overview, Brands, Reports, Settings, Login)
+├── contexts/       # Auth context
+├── lib/            # Supabase + API client
+└── hooks/          # Live data
 ```
 
 ## Built for Foundry Labs
 
-Commerce account management for agencies managing social media and shop accounts for businesses of all sizes.
+Brand-first commerce management — retainer + margin model for mid-market and enterprise clients.

@@ -167,7 +167,8 @@ export function GroupDetailView({ group, onBack, onAddAccount }: GroupDetailView
 
       {showAddModal && (
         <AddAccountModal
-          groupName={group.name}
+          brandId={group.id}
+          brandName={group.name}
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddAccount}
         />

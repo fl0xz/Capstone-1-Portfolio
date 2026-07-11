@@ -659,6 +659,193 @@ body {
 .platform-dot.platform-tiktok { background: #000; }
 .platform-dot.platform-amazon { background: #ff9900; }
 .platform-dot.platform-ebay { background: #e53238; }
+.platform-dot.platform-etsy { background: #f1641e; }
+
+.platform-card.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.platform-soon {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* ─── Login ─── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.login-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+  text-align: center;
+}
+
+.login-logo h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 12px;
+}
+
+.login-logo p {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.login-logo .logo-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--accent);
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.login-form {
+  text-align: left;
+  margin-top: 28px;
+}
+
+.login-form h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.login-error {
+  color: var(--red);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.login-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.login-toggle {
+  margin-top: 20px;
+  background: none;
+  border: none;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.login-demo-note {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 20px 0;
+}
+
+.login-demo-btn {
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* ─── OAuth Connect ─── */
+.oauth-connect-card {
+  text-align: center;
+  padding: 8px 0 16px;
+}
+
+.oauth-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+}
+
+.oauth-connect-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.oauth-connect-card p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.oauth-steps {
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0 auto 20px;
+  max-width: 320px;
+  padding-left: 20px;
+}
+
+.oauth-steps li {
+  margin-bottom: 6px;
+}
+
+.oauth-connect-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.status-pending {
+  background: var(--orange-light);
+  color: var(--orange);
+}
+
+.setup-vars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.setup-vars code {
+  display: block;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.setup-note {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.setup-note a {
+  color: var(--accent);
+}
+
+.setup-note code {
+  font-size: 12px;
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 
 .group-chevron {
   color: var(--text-tertiary);

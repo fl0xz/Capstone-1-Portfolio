@@ -1,25 +1,50 @@
-import { X, Check, AlertTriangle, Info } from 'lucide-react';
+import { X, Check, AlertTriangle, Info, ExternalLink, Loader } from 'lucide-react';
 import type { Platform, NewAccountForm } from '../types';
 import { PlatformIcon } from './PlatformIcon';
 import { getPlatformLabel } from '../utils/format';
+import { getAmazonAuthorizeUrl } from '../lib/api';
 import { useState } from 'react';
 
 interface AddAccountModalProps {
-  groupName: string;
+  brandId: string;
+  brandName: string;
   onClose: () => void;
   onSubmit: (form: NewAccountForm) => void;
 }
 
-const platforms: { id: Platform; label: string; description: string }[] = [
-  { id: 'tiktok', label: 'TikTok Shop', description: 'Connect your TikTok Shop seller account' },
-  { id: 'amazon', label: 'Amazon', description: 'Link Amazon Seller Central credentials' },
-  { id: 'ebay', label: 'eBay', description: 'Connect your eBay seller account' },
+const platforms: { id: Platform; label: string; description: string; available: boolean }[] = [
+  {
+    id: 'amazon',
+    label: 'Amazon UK',
+    description: 'Connect via Seller Central — one click, no API keys per client',
+    available: true,
+  },
+  {
+    id: 'tiktok',
+    label: 'TikTok Shop',
+    description: 'OAuth connect — coming in Phase 2',
+    available: false,
+  },
+  {
+    id: 'ebay',
+    label: 'eBay UK',
+    description: 'OAuth connect — coming in Phase 2',
+    available: false,
+  },
+  {
+    id: 'etsy',
+    label: 'Etsy',
+    description: 'OAuth connect — coming in Phase 2',
+    available: false,
+  },
 ];
 
-export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModalProps) {
+export function AddAccountModal({ brandId, brandName, onClose, onSubmit }: AddAccountModalProps) {
   const [step, setStep] = useState<1 | 2>(1);
   const [platform, setPlatform] = useState<Platform | null>(null);
   const [form, setForm] = useState({ name: '', handle: '', email: '', password: '' });
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,13 +53,36 @@ export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModa
     onClose();
   };
 
+  const handleAmazonConnect = async () => {
+    setConnecting(true);
+    setConnectError('');
+
+    const result = await getAmazonAuthorizeUrl(brandId);
+
+    if (result.setupRequired) {
+      setConnectError(
+        'Amazon SP-API needs to be configured in Vercel first. See Settings → Integrations for setup steps.'
+      );
+      setConnecting(false);
+      return;
+    }
+
+    if (result.error || !result.url) {
+      setConnectError(result.error || 'Could not start Amazon connection');
+      setConnecting(false);
+      return;
+    }
+
+    window.location.href = result.url;
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
             <h2>Connect Account</h2>
-            <p className="modal-subtitle">Add to {groupName}</p>
+            <p className="modal-subtitle">Add to {brandName}</p>
           </div>
           <button className="modal-close" onClick={onClose}>
             <X size={20} />
@@ -48,8 +96,9 @@ export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModa
               {platforms.map((p) => (
                 <button
                   key={p.id}
-                  className={`platform-card ${platform === p.id ? 'selected' : ''}`}
-                  onClick={() => setPlatform(p.id)}
+                  className={`platform-card ${platform === p.id ? 'selected' : ''} ${!p.available ? 'disabled' : ''}`}
+                  onClick={() => p.available && setPlatform(p.id)}
+                  disabled={!p.available}
                 >
                   <div className={`platform-icon-wrap platform-${p.id}`}>
                     <PlatformIcon platform={p.id} size={24} />
@@ -63,6 +112,7 @@ export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModa
                       <Check size={16} />
                     </div>
                   )}
+                  {!p.available && <span className="platform-soon">Soon</span>}
                 </button>
               ))}
             </div>
@@ -70,28 +120,63 @@ export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModa
               <button className="btn-secondary" onClick={onClose}>
                 Cancel
               </button>
-              <button
-                className="btn-primary"
-                disabled={!platform}
-                onClick={() => setStep(2)}
-              >
+              <button className="btn-primary" disabled={!platform} onClick={() => setStep(2)}>
                 Continue
               </button>
             </div>
           </div>
         )}
 
-        {step === 2 && platform && (
+        {step === 2 && platform === 'amazon' && (
+          <div className="modal-body">
+            <p className="step-label">Step 2 — Connect Amazon UK</p>
+            <div className="oauth-connect-card">
+              <div className={`platform-icon-wrap platform-amazon oauth-icon`}>
+                <PlatformIcon platform="amazon" size={32} />
+              </div>
+              <h3>Authorise via Seller Central</h3>
+              <p>
+                You&apos;ll be redirected to Amazon Seller Central UK. Log in with the seller
+                account for <strong>{brandName}</strong> and click Allow. No passwords are stored
+                in Foundry Labs.
+              </p>
+              <ul className="oauth-steps">
+                <li>Opens Amazon&apos;s secure login page</li>
+                <li>One-time authorisation per brand</li>
+                <li>Works for your clients too — just send them the link</li>
+              </ul>
+              {connectError && <p className="login-error">{connectError}</p>}
+              <button
+                className="btn-primary oauth-connect-btn"
+                onClick={handleAmazonConnect}
+                disabled={connecting}
+              >
+                {connecting ? (
+                  <>
+                    <Loader size={16} className="spin" /> Connecting…
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink size={16} />
+                    Connect Amazon UK
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setStep(1)}>
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && platform && platform !== 'amazon' && (
           <form className="modal-body" onSubmit={handleSubmit}>
-            <p className="step-label">
-              Step 2 — {getPlatformLabel(platform)} Credentials
-            </p>
+            <p className="step-label">Step 2 — {getPlatformLabel(platform)} Credentials</p>
             <div className="form-notice">
               <Info size={16} />
-              <span>
-                Credentials are encrypted and stored securely. Foundry Labs uses OAuth where
-                available — this mockup simulates the connection flow.
-              </span>
+              <span>OAuth connect for this platform is coming soon.</span>
             </div>
             <div className="form-group">
               <label htmlFor="name">Account Name</label>
@@ -109,31 +194,9 @@ export function AddAccountModal({ groupName, onClose, onSubmit }: AddAccountModa
               <input
                 id="handle"
                 type="text"
-                placeholder={platform === 'tiktok' ? '@username' : 'store-id'}
+                placeholder="store-id"
                 value={form.handle}
                 onChange={(e) => setForm({ ...form, handle: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="email">Login Email</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="seller@company.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="password">Password / API Key</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••••••"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
                 required
               />
             </div>
@@ -173,8 +236,8 @@ export function AddGroupModal({ onClose, onSubmit }: AddGroupModalProps) {
       <div className="modal modal-sm" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h2>New Client Group</h2>
-            <p className="modal-subtitle">Organise accounts by client</p>
+            <h2>New Brand</h2>
+            <p className="modal-subtitle">Group accounts by brand</p>
           </div>
           <button className="modal-close" onClick={onClose}>
             <X size={20} />
@@ -182,11 +245,11 @@ export function AddGroupModal({ onClose, onSubmit }: AddGroupModalProps) {
         </div>
         <form className="modal-body" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="groupName">Client Name</label>
+            <label htmlFor="groupName">Brand Name</label>
             <input
               id="groupName"
               type="text"
-              placeholder="e.g. Acme Corporation"
+              placeholder="e.g. Nova Fashion"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
@@ -197,7 +260,7 @@ export function AddGroupModal({ onClose, onSubmit }: AddGroupModalProps) {
             <input
               id="groupDesc"
               type="text"
-              placeholder="Brief description of the client"
+              placeholder="Brief description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -222,7 +285,7 @@ export function AddGroupModal({ onClose, onSubmit }: AddGroupModalProps) {
               Cancel
             </button>
             <button type="submit" className="btn-primary" disabled={!name.trim()}>
-              Create Group
+              Create Brand
             </button>
           </div>
         </form>

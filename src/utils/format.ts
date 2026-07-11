@@ -31,8 +31,9 @@ export function formatTimeAgo(iso: string): string {
 export function getPlatformLabel(platform: string): string {
   const labels: Record<string, string> = {
     tiktok: 'TikTok Shop',
-    amazon: 'Amazon',
+    amazon: 'Amazon UK',
     ebay: 'eBay',
+    etsy: 'Etsy',
   };
   return labels[platform] || platform;
 }
@@ -42,6 +43,7 @@ export function getPlatformColor(platform: string): string {
     tiktok: '#000000',
     amazon: '#FF9900',
     ebay: '#E53238',
+    etsy: '#F1641E',
   };
   return colors[platform] || '#86868B';
 }
