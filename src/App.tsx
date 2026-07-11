@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar, type View } from './components/Sidebar';
 import { OverviewView, GroupsView } from './views/OverviewViews';
 import { GroupDetailView } from './views/GroupDetailView';
@@ -19,6 +19,33 @@ function App() {
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const connect = params.get('connect');
+
+    if (connect === 'success') {
+      const platform = params.get('platform') || 'account';
+      const brandId = params.get('brandId');
+      setToast({
+        message: `${platform === 'amazon' ? 'Amazon UK' : platform} connected successfully!`,
+        type: 'success',
+      });
+      if (brandId) {
+        setSelectedGroupId(brandId);
+        setCurrentView('group-detail');
+      }
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setToast(null), 5000);
+    }
+
+    if (connect === 'error') {
+      const message = params.get('message') || 'Connection failed';
+      setToast({ message: decodeURIComponent(message), type: 'warning' });
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setToast(null), 6000);
+    }
+  }, []);
+
   const handleSelectGroup = (groupId: string) => {
     setSelectedGroupId(groupId);
     setCurrentView('group-detail');
@@ -29,9 +56,13 @@ function App() {
     if (view !== 'group-detail') setSelectedGroupId(null);
   };
 
-  const handleAddGroup = (name: string, description: string, size: 'enterprise' | 'mid-market' | 'small-business') => {
+  const handleAddGroup = (
+    name: string,
+    description: string,
+    size: 'enterprise' | 'mid-market' | 'small-business'
+  ) => {
     const id = addGroup(name, description, size);
-    setToast({ message: `Created group "${name}"`, type: 'success' });
+    setToast({ message: `Created brand "${name}"`, type: 'success' });
     setTimeout(() => setToast(null), 3000);
     handleSelectGroup(id);
   };
@@ -89,10 +120,7 @@ function App() {
       />
       <main className="main-content">{renderView()}</main>
       {showAddGroupModal && (
-        <AddGroupModal
-          onClose={() => setShowAddGroupModal(false)}
-          onSubmit={handleAddGroup}
-        />
+        <AddGroupModal onClose={() => setShowAddGroupModal(false)} onSubmit={handleAddGroup} />
       )}
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>

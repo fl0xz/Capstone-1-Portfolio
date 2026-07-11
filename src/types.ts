@@ -1,4 +1,4 @@
-export type Platform = 'tiktok' | 'amazon' | 'ebay';
+export type Platform = 'tiktok' | 'amazon' | 'ebay' | 'etsy';
 
 export interface AccountMetrics {
   revenue: number;
