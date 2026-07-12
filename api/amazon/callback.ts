@@ -116,7 +116,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     return res.redirect(
-      `${appUrl}/?connect=success&platform=amazon&brandId=${brandId}&seller=${sellingPartnerId || ''}`
+      `${appUrl}/?connect=success&platform=amazon&brandId=${brandId}&seller=${sellingPartnerId || ''}&sync=1`
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'connection_failed';

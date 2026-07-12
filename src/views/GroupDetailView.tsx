@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, RefreshCw } from 'lucide-react';
 import { MetricCard } from '../components/MetricCard';
 import { AccountCard, AddAccountButton } from '../components/Cards';
 import { AnalyticsChart } from '../components/AnalyticsChart';
 import { AddAccountModal } from '../components/Modals';
+import { syncAmazonAccounts } from '../lib/api';
 import type { ClientGroup, ConnectedAccount, NewAccountForm } from '../types';
 import { formatCurrency, formatNumber, getClientSizeLabel } from '../utils/format';
 
@@ -11,23 +12,42 @@ interface GroupDetailViewProps {
   group: ClientGroup;
   onBack: () => void;
   onAddAccount: (groupId: string, form: NewAccountForm) => void;
+  onSynced?: () => void | Promise<void>;
 }
 
-export function GroupDetailView({ group, onBack, onAddAccount }: GroupDetailViewProps) {
+export function GroupDetailView({ group, onBack, onAddAccount, onSynced }: GroupDetailViewProps) {
   const [selectedAccount, setSelectedAccount] = useState<ConnectedAccount | null>(
     group.accounts[0] || null
   );
   const [showAddModal, setShowAddModal] = useState(false);
   const [chartMetric, setChartMetric] = useState<'revenue' | 'orders' | 'views'>('revenue');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   const totalOrders = group.accounts.reduce((s, a) => s + a.metrics.orders, 0);
   const totalViews = group.accounts.reduce((s, a) => s + a.metrics.views, 0);
   const avgEngagement =
     group.accounts.reduce((s, a) => s + a.metrics.engagement, 0) / (group.accounts.length || 1);
 
+  const amazonAccounts = group.accounts.filter((a) => a.platform === 'amazon');
+
   const handleAddAccount = (form: NewAccountForm) => {
     onAddAccount(group.id, form);
     setShowAddModal(false);
+  };
+
+  const handleSyncAmazon = async () => {
+    setSyncing(true);
+    setSyncMessage('');
+    const result = await syncAmazonAccounts({ brandId: group.id });
+    if (result.ok) {
+      setSyncMessage(`Synced ${result.synced || 0} Amazon account(s)`);
+      await onSynced?.();
+    } else {
+      setSyncMessage(result.error || 'Sync failed');
+    }
+    setSyncing(false);
+    setTimeout(() => setSyncMessage(''), 4000);
   };
 
   return (
@@ -46,11 +66,20 @@ export function GroupDetailView({ group, onBack, onAddAccount }: GroupDetailView
             </p>
           </div>
         </div>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <Plus size={16} />
-          Connect Account
-        </button>
+        <div className="header-actions">
+          {amazonAccounts.length > 0 && (
+            <button className="btn-secondary" onClick={() => void handleSyncAmazon()} disabled={syncing}>
+              <RefreshCw size={16} className={syncing ? 'spin' : undefined} />
+              {syncing ? 'Syncing…' : 'Sync Amazon'}
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} />
+            Connect Account
+          </button>
+        </div>
       </header>
+      {syncMessage && <p className="inline-sync-message">{syncMessage}</p>}
 
       <section className="metrics-row">
         <MetricCard

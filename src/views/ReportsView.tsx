@@ -5,6 +5,7 @@ import { morningReport } from '../data/mockData';
 import type { ClientGroup } from '../types';
 import { formatCurrency, formatNumber } from '../utils/format';
 import { PlatformIcon } from '../components/PlatformIcon';
+import { syncAmazonAccounts } from '../lib/api';
 
 interface ReportsViewProps {
   groups: ClientGroup[];
@@ -144,18 +145,47 @@ export function ReportsView({ groups }: ReportsViewProps) {
   );
 }
 
-export function SettingsView() {
+export function SettingsView({ onSynced }: { onSynced?: () => void | Promise<void> }) {
   const [status, setStatus] = useState<{
-    amazon: { configured: boolean; marketplace: string };
+    amazon: {
+      configured: boolean;
+      marketplace: string;
+      sync?: boolean;
+      connectedAccounts?: number;
+      lastSync?: string | null;
+    };
     supabase?: boolean;
+    cron?: boolean;
   } | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
-  useEffect(() => {
+  const refreshStatus = () => {
     fetch('/api/integrations/status')
       .then((r) => r.json())
       .then(setStatus)
       .catch(() => setStatus({ amazon: { configured: false, marketplace: 'UK' } }));
+  };
+
+  useEffect(() => {
+    refreshStatus();
   }, []);
+
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    setSyncMessage('');
+    const result = await syncAmazonAccounts();
+    if (result.ok) {
+      setSyncMessage(
+        `Synced ${result.synced || 0} account(s)${result.failed ? `, ${result.failed} failed` : ''}`
+      );
+      await onSynced?.();
+      refreshStatus();
+    } else {
+      setSyncMessage(result.error || 'Sync failed');
+    }
+    setSyncing(false);
+  };
 
   return (
     <div className="view settings-view">
@@ -174,12 +204,17 @@ export function SettingsView() {
             <div className="platform-status-item">
               <div className="ps-info">
                 <span className="ps-name">Amazon UK SP-API</span>
-                <span className="ps-note">Link-based OAuth via Seller Central</span>
+                <span className="ps-note">
+                  OAuth + Sales API sync
+                  {status?.amazon.connectedAccounts
+                    ? ` · ${status.amazon.connectedAccounts} connected`
+                    : ''}
+                </span>
               </div>
               <span
                 className={`ps-status ${status?.amazon.configured ? 'status-ready' : 'status-pending'}`}
               >
-                {status?.amazon.configured ? 'Ready' : 'Needs setup'}
+                {status?.amazon.sync ? 'OAuth + Sync ready' : status?.amazon.configured ? 'OAuth ready' : 'Needs setup'}
               </span>
             </div>
             {[
@@ -210,6 +245,7 @@ export function SettingsView() {
             <code>AMAZON_REDIRECT_URI</code>
             <code>AMAZON_DRAFT_APP=true</code>
             <code>APP_URL=https://your-vercel-url.vercel.app</code>
+            <code>CRON_SECRET</code>
           </div>
           <p className="settings-desc setup-note">
             Register once at{' '}
@@ -217,7 +253,8 @@ export function SettingsView() {
               Seller Central UK → Develop Apps
             </a>
             . Each brand then connects via the &quot;Connect Amazon UK&quot; button — no per-client
-            API setup.
+            API setup. Ensure your app has the <strong>Sales and Traffic</strong> / order metrics
+            role enabled.
           </p>
         </section>
 
@@ -225,16 +262,17 @@ export function SettingsView() {
           <h2>Database (Supabase)</h2>
           <p className="settings-desc">
             {status?.supabase
-              ? 'Supabase connected — tokens stored securely'
-              : 'Optional: add Supabase for persistent brands and token storage'}
+              ? 'Supabase connected — tokens + metrics stored securely'
+              : 'Required for Phase 1b sync: add Supabase for brands, tokens, and metrics'}
           </p>
           <div className="setup-vars">
             <code>VITE_SUPABASE_URL</code>
+            <code>SUPABASE_URL</code>
             <code>VITE_SUPABASE_ANON_KEY</code>
             <code>SUPABASE_SERVICE_ROLE_KEY</code>
           </div>
           <p className="settings-desc setup-note">
-            Run <code>supabase/schema.sql</code> in your Supabase SQL editor.
+            Run <code>supabase/schema.sql</code> in your Supabase SQL editor (includes Phase 1b columns).
           </p>
         </section>
 
@@ -265,19 +303,35 @@ export function SettingsView() {
         </section>
 
         <section className="panel settings-panel">
-          <h2>Live Data Sync</h2>
-          <p className="settings-desc">How often platform data is refreshed</p>
+          <h2>Live Data Sync (Phase 1b)</h2>
+          <p className="settings-desc">
+            Pulls Amazon UK order metrics via SP-API Sales API. Hourly Vercel cron when{' '}
+            <code>CRON_SECRET</code> is set.
+            {status?.amazon.lastSync
+              ? ` Last sync: ${new Date(status.amazon.lastSync).toLocaleString('en-GB')}.`
+              : ' No sync yet.'}
+          </p>
           <div className="settings-row">
             <label>Refresh Interval</label>
-            <select defaultValue="30">
-              <option value="15">Every 15 minutes</option>
-              <option value="30">Every 30 minutes</option>
-              <option value="60">Every hour</option>
+            <select defaultValue="60" disabled>
+              <option value="60">Every hour (cron)</option>
             </select>
           </div>
           <div className="settings-row toggle-row">
-            <label>Auto-sync on login</label>
-            <input type="checkbox" defaultChecked />
+            <label>Cron configured</label>
+            <span className={`ps-status ${status?.cron ? 'status-ready' : 'status-pending'}`}>
+              {status?.cron ? 'Yes' : 'Set CRON_SECRET'}
+            </span>
+          </div>
+          <div className="settings-sync-actions">
+            <button
+              className="btn-primary"
+              onClick={() => void handleSyncAll()}
+              disabled={syncing || !status?.amazon.configured}
+            >
+              {syncing ? 'Syncing Amazon UK…' : 'Sync all Amazon accounts'}
+            </button>
+            {syncMessage && <p className="inline-sync-message">{syncMessage}</p>}
           </div>
         </section>
       </div>

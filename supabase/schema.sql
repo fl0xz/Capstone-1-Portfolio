@@ -51,7 +51,7 @@ create table if not exists oauth_states (
   created_at timestamptz default now()
 );
 
--- Daily metrics snapshots
+-- Daily metrics snapshots (Phase 1b Amazon sync)
 create table if not exists metrics_snapshots (
   id uuid primary key default uuid_generate_v4(),
   account_id uuid references connected_accounts(id) on delete cascade not null,
@@ -63,8 +63,16 @@ create table if not exists metrics_snapshots (
   ad_spend numeric default 0,
   margin numeric default 0,
   roi numeric default 0,
+  revenue_change numeric default 0,
+  orders_change numeric default 0,
+  hourly_data jsonb default '[]'::jsonb,
   captured_at timestamptz default now()
 );
+
+-- Safe upgrades for databases created in Phase 1
+alter table metrics_snapshots add column if not exists revenue_change numeric default 0;
+alter table metrics_snapshots add column if not exists orders_change numeric default 0;
+alter table metrics_snapshots add column if not exists hourly_data jsonb default '[]'::jsonb;
 
 -- Row Level Security
 alter table brands enable row level security;
