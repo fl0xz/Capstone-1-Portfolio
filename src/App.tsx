@@ -5,6 +5,8 @@ import { GroupDetailView } from './views/GroupDetailView';
 import { ReportsView, SettingsView } from './views/ReportsView';
 import { AddGroupModal, Toast } from './components/Modals';
 import { useLiveData } from './hooks/useLiveData';
+import { useLiveAmazonOverlay } from './hooks/useLiveAmazonOverlay';
+import { syncAmazonAccounts } from './lib/api';
 import type { NewAccountForm } from './types';
 import './index.css';
 
@@ -14,8 +16,18 @@ function App() {
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'warning' } | null>(null);
 
-  const { groups, lastUpdated, isLive, setIsLive, refresh, addAccount, addGroup, totals } =
+  const { groups: mockGroups, lastUpdated, isLive, setIsLive, refresh, addAccount, addGroup } =
     useLiveData();
+
+  const { groups, live: hasLiveAmazon, refreshLive } = useLiveAmazonOverlay(mockGroups);
+
+  const totals = {
+    revenue: groups.reduce((s, g) => s + g.totalRevenue, 0),
+    orders: groups.reduce((s, g) => s + g.accounts.reduce((a, acc) => a + acc.metrics.orders, 0), 0),
+    views: groups.reduce((s, g) => s + g.accounts.reduce((a, acc) => a + acc.metrics.views, 0), 0),
+    accounts: groups.reduce((s, g) => s + g.accounts.length, 0),
+    groups: groups.length,
+  };
 
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
@@ -26,6 +38,8 @@ function App() {
     if (connect === 'success') {
       const platform = params.get('platform') || 'account';
       const brandId = params.get('brandId');
+      const shouldSync = params.get('sync') === '1';
+
       setToast({
         message: `${platform === 'amazon' ? 'Amazon UK' : platform} connected successfully!`,
         type: 'success',
@@ -36,6 +50,26 @@ function App() {
       }
       window.history.replaceState({}, '', window.location.pathname);
       setTimeout(() => setToast(null), 5000);
+
+      if (shouldSync && brandId) {
+        void (async () => {
+          setToast({ message: 'Syncing Amazon UK orders…', type: 'success' });
+          const result = await syncAmazonAccounts({ brandId });
+          if (result.ok) {
+            await refreshLive();
+            setToast({
+              message: `Synced ${result.synced || 0} Amazon account${(result.synced || 0) === 1 ? '' : 's'}`,
+              type: 'success',
+            });
+          } else {
+            setToast({
+              message: result.error || 'Connected — sync will run once credentials are ready',
+              type: 'warning',
+            });
+          }
+          setTimeout(() => setToast(null), 5000);
+        })();
+      }
     }
 
     if (connect === 'error') {
@@ -44,7 +78,7 @@ function App() {
       window.history.replaceState({}, '', window.location.pathname);
       setTimeout(() => setToast(null), 6000);
     }
-  }, []);
+  }, [refreshLive]);
 
   const handleSelectGroup = (groupId: string) => {
     setSelectedGroupId(groupId);
@@ -87,6 +121,9 @@ function App() {
           group={selectedGroup}
           onBack={() => handleNavigate('groups')}
           onAddAccount={handleAddAccount}
+          onSynced={async () => {
+            await refreshLive();
+          }}
         />
       );
     }
@@ -99,10 +136,21 @@ function App() {
       case 'reports':
         return <ReportsView groups={groups} />;
       case 'settings':
-        return <SettingsView />;
+        return (
+          <SettingsView
+            onSynced={async () => {
+              await refreshLive();
+            }}
+          />
+        );
       default:
         return <OverviewView groups={groups} totals={totals} onSelectGroup={handleSelectGroup} />;
     }
+  };
+
+  const handleRefresh = async () => {
+    refresh();
+    await refreshLive();
   };
 
   return (
@@ -111,9 +159,9 @@ function App() {
         currentView={currentView}
         onNavigate={handleNavigate}
         onAddGroup={() => setShowAddGroupModal(true)}
-        isLive={isLive}
+        isLive={isLive || hasLiveAmazon}
         onToggleLive={() => setIsLive(!isLive)}
-        onRefresh={refresh}
+        onRefresh={() => void handleRefresh()}
         lastUpdated={lastUpdated}
         groupCount={totals.groups}
         accountCount={totals.accounts}
